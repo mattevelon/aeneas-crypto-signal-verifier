@@ -40,7 +40,7 @@ scipy==1.11.4
 scikit-learn==1.4.0
 
 # Technical Analysis
-# ta-lib==0.4.28  # Commented out - requires manual installation
+ta-lib==0.6.7
 yfinance==0.2.33
 
 # NLP and Text Processing
