@@ -1,0 +1,28 @@
+# <type>: <subject> (max 50 chars)
+
+# <body> (optional, wrap at 72 chars)
+
+# <footer> (optional)
+
+# Type can be:
+#   feat     - new feature
+#   fix      - bug fix
+#   docs     - documentation only changes
+#   style    - formatting, missing semi colons, etc; no code change
+#   refactor - refactoring production code
+#   test     - adding tests, refactoring test; no production code change
+#   chore    - updating build tasks, package manager configs, etc
+#   perf     - performance improvements
+#   ci       - CI/CD changes
+#   build    - build system or external dependency changes
+#   revert   - reverting a previous commit
+#
+# Example:
+# feat: add Telegram message handler for signal detection
+#
+# Implemented async message processing with:
+# - Priority queue for high-value signals
+# - Deduplication mechanism
+# - Batch processing for efficiency
+#
+# Closes #123

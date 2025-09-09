@@ -4,7 +4,7 @@ Application settings using Pydantic for validation and environment variable load
 
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",  # Ignore extra fields in .env
     )
     
     # Application Settings
@@ -24,7 +25,7 @@ class Settings(BaseSettings):
     
     # Database Configuration
     database_url: str = Field(
-        default="postgresql://user:password@localhost:5432/crypto_signals",
+        default="postgresql://crypto_user:crypto_password@localhost:5432/crypto_signals",
         description="PostgreSQL connection URL"
     )
     database_pool_size: int = Field(default=20, description="Database connection pool size")
@@ -34,110 +35,85 @@ class Settings(BaseSettings):
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
     redis_ttl: int = Field(default=3600, description="Default TTL in seconds")
-    redis_max_connections: int = Field(default=50, description="Maximum Redis connections")
+    redis_max_connections: int = Field(default=50, description="Max Redis connections")
     
     # Telegram Configuration
-    telegram_api_id: Optional[int] = Field(default=None, description="Telegram API ID")
-    telegram_api_hash: Optional[str] = Field(default=None, description="Telegram API Hash")
-    telegram_phone_number: Optional[str] = Field(default=None, description="Telegram phone number")
+    telegram_api_id: int = Field(description="Telegram API ID")
+    telegram_api_hash: str = Field(description="Telegram API Hash")
+    telegram_phone_number: str = Field(description="Telegram phone number")
     telegram_session_name: str = Field(default="crypto_signals_bot", description="Session name")
-    telegram_channels: List[str] = Field(default_factory=list, description="Telegram channels to monitor")
-    
-    @validator("telegram_channels", pre=True)
-    def parse_channels(cls, v):
-        if isinstance(v, str):
-            return [ch.strip() for ch in v.split(",") if ch.strip()]
-        return v
+    telegram_channels: str = Field(default="", description="Comma-separated channel list")
     
     # LLM Configuration
-    llm_provider: str = Field(default="openai", description="LLM provider (openai/anthropic)")
-    llm_model: str = Field(default="gpt-4-turbo-preview", description="LLM model name")
-    llm_api_key: Optional[str] = Field(default=None, description="LLM API key")
+    llm_provider: str = Field(default="openai", description="LLM provider")
+    llm_model: str = Field(default="gpt-4-turbo-preview", description="LLM model")
+    llm_api_key: str = Field(description="LLM API key")
     llm_temperature: float = Field(default=0.3, description="LLM temperature")
-    llm_max_tokens: int = Field(default=4000, description="Maximum tokens per request")
-    llm_timeout: int = Field(default=30, description="LLM request timeout")
-    llm_max_retries: int = Field(default=3, description="Maximum retry attempts")
-    
-    # Fallback LLM Configuration
-    fallback_llm_provider: Optional[str] = Field(default=None, description="Fallback LLM provider")
-    fallback_llm_model: Optional[str] = Field(default=None, description="Fallback LLM model")
-    fallback_llm_api_key: Optional[str] = Field(default=None, description="Fallback LLM API key")
+    llm_max_tokens: int = Field(default=4000, description="Max tokens")
+    llm_timeout: int = Field(default=30, description="LLM timeout")
+    llm_max_retries: int = Field(default=3, description="Max retries")
     
     # Market Data APIs
     binance_api_key: Optional[str] = Field(default=None, description="Binance API key")
     binance_api_secret: Optional[str] = Field(default=None, description="Binance API secret")
     kucoin_api_key: Optional[str] = Field(default=None, description="KuCoin API key")
     kucoin_api_secret: Optional[str] = Field(default=None, description="KuCoin API secret")
-    kucoin_api_passphrase: Optional[str] = Field(default=None, description="KuCoin API passphrase")
+    kucoin_api_passphrase: Optional[str] = Field(default=None, description="KuCoin passphrase")
     
     # Vector Database Configuration
     vector_db_url: str = Field(default="http://localhost:6333", description="Vector DB URL")
-    vector_collection: str = Field(default="signals", description="Vector collection name")
-    vector_embedding_model: str = Field(default="text-embedding-3-small", description="Embedding model")
-    vector_dimension: int = Field(default=1536, description="Vector dimension")
+    qdrant_api_key: Optional[str] = Field(default=None, description="Qdrant API key")
+    vector_collection_name: str = Field(default="signals", description="Collection name")
     
     # Kafka Configuration
-    kafka_bootstrap_servers: str = Field(default="localhost:9092", description="Kafka bootstrap servers")
-    kafka_signal_topic: str = Field(default="crypto-signals", description="Signal topic")
-    kafka_validation_topic: str = Field(default="signal-validation", description="Validation topic")
-    kafka_alert_topic: str = Field(default="signal-alerts", description="Alert topic")
+    kafka_bootstrap_servers: str = Field(default="localhost:9092", description="Kafka servers")
+    kafka_topic_signals: str = Field(default="crypto-signals", description="Signals topic")
+    kafka_topic_validation: str = Field(default="signal-validation", description="Validation topic")
     kafka_consumer_group: str = Field(default="signal-processor", description="Consumer group")
     
-    # OCR Configuration
-    ocr_provider: str = Field(default="google", description="OCR provider (google/aws/tesseract)")
-    google_vision_api_key: Optional[str] = Field(default=None, description="Google Vision API key")
-    aws_textract_region: str = Field(default="us-east-1", description="AWS region")
-    aws_access_key_id: Optional[str] = Field(default=None, description="AWS access key")
-    aws_secret_access_key: Optional[str] = Field(default=None, description="AWS secret key")
-    
-    # Security Configuration
-    jwt_secret_key: str = Field(default="change-this-secret-key", description="JWT secret key")
+    # API Configuration
+    api_prefix: str = Field(default="/api/v1", description="API prefix")
+    cors_origins: str = Field(default="*", description="CORS origins")
+    jwt_secret_key: str = Field(default="your-secret-key-change-in-production", description="JWT secret")
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
-    jwt_access_token_expire_minutes: int = Field(default=15, description="Access token expiry")
-    jwt_refresh_token_expire_days: int = Field(default=7, description="Refresh token expiry")
-    cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:3000"], description="CORS origins")
+    jwt_expiration_minutes: int = Field(default=1440, description="JWT expiration")
     
-    @validator("cors_origins", pre=True)
-    def parse_cors_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    # Rate Limiting
+    rate_limit_requests_per_minute: int = Field(default=60, description="Rate limit")
+    rate_limit_burst_size: int = Field(default=100, description="Burst size")
+    
+    # Feature Flags
+    enable_websocket: bool = Field(default=True, description="Enable WebSocket")
+    enable_backtesting: bool = Field(default=True, description="Enable backtesting")
+    enable_paper_trading: bool = Field(default=False, description="Enable paper trading")
+    enable_notifications: bool = Field(default=True, description="Enable notifications")
+    
+    # Performance Settings
+    signal_processing_timeout: int = Field(default=2, description="Processing timeout")
+    max_concurrent_signals: int = Field(default=10, description="Max concurrent signals")
+    cache_ttl_seconds: int = Field(default=3600, description="Cache TTL")
     
     # Monitoring Configuration
     prometheus_port: int = Field(default=9090, description="Prometheus port")
     jaeger_endpoint: str = Field(default="http://localhost:14268/api/traces", description="Jaeger endpoint")
     jaeger_service_name: str = Field(default="crypto-signals-api", description="Service name")
     
-    # Rate Limiting
-    rate_limit_requests_per_minute: int = Field(default=100, description="Rate limit per minute")
-    rate_limit_burst_size: int = Field(default=150, description="Burst size")
     
-    # Feature Flags
-    enable_websocket: bool = Field(default=True, description="Enable WebSocket support")
-    enable_backtesting: bool = Field(default=True, description="Enable backtesting")
-    enable_paper_trading: bool = Field(default=False, description="Enable paper trading")
-    enable_signal_feedback: bool = Field(default=True, description="Enable signal feedback")
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Get CORS origins as a list."""
+        if isinstance(self.cors_origins, str):
+            if self.cors_origins == "*":
+                return ["*"]
+            return [origin.strip() for origin in self.cors_origins.split(",")]
+        return self.cors_origins
     
-    # Performance Settings
-    worker_count: int = Field(default=4, description="Number of workers")
-    worker_timeout: int = Field(default=120, description="Worker timeout in seconds")
-    batch_size: int = Field(default=5, description="Batch processing size")
-    cache_enabled: bool = Field(default=True, description="Enable caching")
-    
-    # Notification Settings
-    webhook_url: Optional[str] = Field(default=None, description="Webhook URL for notifications")
-    telegram_bot_token: Optional[str] = Field(default=None, description="Telegram bot token")
-    telegram_alert_chat_id: Optional[int] = Field(default=None, description="Telegram alert chat ID")
-    
-    # External Services
-    coingecko_api_key: Optional[str] = Field(default=None, description="CoinGecko API key")
-    newsapi_key: Optional[str] = Field(default=None, description="NewsAPI key")
-    cryptocompare_api_key: Optional[str] = Field(default=None, description="CryptoCompare API key")
-    
-    class Config:
-        """Pydantic configuration."""
-        validate_assignment = True
-        use_enum_values = True
+    @property
+    def telegram_channels_list(self) -> List[str]:
+        """Get Telegram channels as a list."""
+        if isinstance(self.telegram_channels, str) and self.telegram_channels:
+            return [channel.strip() for channel in self.telegram_channels.split(",")]
+        return []
 
 
 # Create global settings instance
