@@ -5,9 +5,9 @@ LLM client for OpenRouter/DeepSeek integration.
 from typing import List, Dict, Optional, Any
 from openai import OpenAI
 from src.config.settings import settings
-import logging
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class LLMClient:

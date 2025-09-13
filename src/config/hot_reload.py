@@ -6,9 +6,9 @@ from typing import Callable, Optional
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from src.config.settings import Settings
-import logging
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class ConfigReloadHandler(FileSystemEventHandler):
