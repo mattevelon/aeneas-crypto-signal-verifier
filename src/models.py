@@ -56,7 +56,7 @@ class Signal(Base):
     status = Column(SQLEnum(SignalStatus), default=SignalStatus.ACTIVE)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSONB)
+    signal_metadata = Column('metadata', JSONB)
     
     # Relationships
     performance = relationship("SignalPerformance", back_populates="signal", uselist=False)

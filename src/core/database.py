@@ -15,14 +15,22 @@ from src.models import Base
 logger = structlog.get_logger()
 
 # Create async engine
-engine = create_async_engine(
-    settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
-    echo=settings.debug,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    pool_timeout=settings.database_pool_timeout,
-    poolclass=NullPool if settings.debug else None,
-)
+if settings.debug:
+    # Use NullPool for debugging (no connection pooling)
+    engine = create_async_engine(
+        settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
+        echo=settings.debug,
+        poolclass=NullPool,
+    )
+else:
+    # Use connection pooling for production
+    engine = create_async_engine(
+        settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
+        echo=settings.debug,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        pool_timeout=settings.database_pool_timeout,
+    )
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(

@@ -33,7 +33,7 @@ class SignalCreate(BaseModel):
     risk_level: Optional[RiskLevel] = None
     confidence_score: Optional[float] = Field(None, ge=0, le=100)
     justification: Dict[str, Any]
-    metadata: Optional[Dict[str, Any]] = None
+    signal_metadata: Optional[Dict[str, Any]] = None
 
 
 class SignalResponse(BaseModel):
@@ -52,7 +52,7 @@ class SignalResponse(BaseModel):
     status: SignalStatus
     created_at: datetime
     updated_at: datetime
-    metadata: Optional[Dict[str, Any]]
+    signal_metadata: Optional[Dict[str, Any]]
     
     class Config:
         from_attributes = True
@@ -62,7 +62,7 @@ class SignalUpdate(BaseModel):
     """Signal update request."""
     status: Optional[SignalStatus] = None
     confidence_score: Optional[float] = Field(None, ge=0, le=100)
-    metadata: Optional[Dict[str, Any]] = None
+    signal_metadata: Optional[Dict[str, Any]] = None
 
 
 @router.post("/", response_model=SignalResponse)
@@ -86,8 +86,12 @@ async def create_signal(
             raise HTTPException(status_code=400, detail="Signal already exists")
         
         # Create signal
+        signal_dict = signal_data.dict()
+        # Rename metadata field for database
+        if 'signal_metadata' in signal_dict:
+            signal_dict['metadata'] = signal_dict.pop('signal_metadata')
         signal = Signal(
-            **signal_data.dict(),
+            **signal_dict,
             take_profits=signal_data.take_profits  # Store as JSONB
         )
         
@@ -199,8 +203,8 @@ async def update_signal(
         signal.status = update_data.status
     if update_data.confidence_score is not None:
         signal.confidence_score = update_data.confidence_score
-    if update_data.metadata is not None:
-        signal.metadata = {**(signal.metadata or {}), **update_data.metadata}
+    if update_data.signal_metadata is not None:
+        signal.signal_metadata = {**(signal.signal_metadata or {}), **update_data.signal_metadata}
     
     signal.updated_at = datetime.utcnow()
     

@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: crypto_signals
       POSTGRES_USER: crypto_user
       POSTGRES_PASSWORD: crypto_password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     ports:
       - "5432:5432"
     volumes:
@@ -22,6 +21,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: crypto_signals_pgbouncer
+    environment:
+      DATABASES_HOST: postgres
+      DATABASES_PORT: 5432
+      DATABASES_DBNAME: crypto_signals
+      DATABASES_USER: crypto_user
+      DATABASES_PASSWORD: crypto_password
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+    ports:
+      - "6432:5432"
+    volumes:
+      - ./config/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./config/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      - postgres
+    networks:
+      - crypto_network
 
   # Redis Cache
   redis:
@@ -61,23 +82,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # Kafka & Zookeeper
+  # Kafka (using bitnami images which are more reliable)
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
+    image: bitnami/zookeeper:3.8
     container_name: crypto_signals_zookeeper
     environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
     volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_logs:/var/lib/zookeeper/log
+      - zookeeper_data:/bitnami/zookeeper
     networks:
       - crypto_network
 
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
+    image: bitnami/kafka:3.6
     container_name: crypto_signals_kafka
     depends_on:
       - zookeeper
@@ -85,21 +106,19 @@ services:
       - "9092:9092"
       - "9093:9093"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9093,EXTERNAL://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,EXTERNAL://localhost:9092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
     volumes:
-      - kafka_data:/var/lib/kafka/data
+      - kafka_data:/bitnami/kafka
     networks:
       - crypto_network
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -138,7 +157,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -183,6 +202,19 @@ services:
     networks:
       - crypto_network
 
+  # RedisInsight (Redis GUI)
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: crypto_signals_redisinsight
+    ports:
+      - "8001:8001"
+    volumes:
+      - redisinsight_data:/db
+    networks:
+      - crypto_network
+    depends_on:
+      - redis
+
 networks:
   crypto_network:
     driver: bridge
@@ -205,3 +237,5 @@ volumes:
     name: crypto_signals_prometheus_data
   grafana_data:
     name: crypto_signals_grafana_data
+  redisinsight_data:
+    name: crypto_signals_redisinsight_data

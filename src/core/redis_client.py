@@ -77,6 +77,8 @@ class RedisCache:
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache."""
         try:
+            if not redis_client:
+                return None  # Gracefully handle when Redis is not available
             client = get_redis()
             full_key = self._make_key(key)
             value = await client.get(full_key)
@@ -102,6 +104,8 @@ class RedisCache:
     ) -> bool:
         """Set value in cache."""
         try:
+            if not redis_client:
+                return False  # Gracefully handle when Redis is not available
             client = get_redis()
             full_key = self._make_key(key)
             ttl = ttl or self.ttl
@@ -122,6 +126,8 @@ class RedisCache:
     async def delete(self, key: str) -> bool:
         """Delete value from cache."""
         try:
+            if not redis_client:
+                return False  # Gracefully handle when Redis is not available
             client = get_redis()
             full_key = self._make_key(key)
             result = await client.delete(full_key)
@@ -134,6 +140,8 @@ class RedisCache:
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache."""
         try:
+            if not redis_client:
+                return False  # Gracefully handle when Redis is not available
             client = get_redis()
             full_key = self._make_key(key)
             return bool(await client.exists(full_key))
@@ -145,6 +153,8 @@ class RedisCache:
     async def get_many(self, keys: list[str]) -> Dict[str, Any]:
         """Get multiple values from cache."""
         try:
+            if not redis_client:
+                return {}  # Gracefully handle when Redis is not available
             client = get_redis()
             full_keys = [self._make_key(k) for k in keys]
             values = await client.mget(full_keys)
@@ -166,6 +176,8 @@ class RedisCache:
     async def increment(self, key: str, amount: int = 1) -> Optional[int]:
         """Increment counter in cache."""
         try:
+            if not redis_client:
+                return None  # Gracefully handle when Redis is not available
             client = get_redis()
             full_key = self._make_key(key)
             return await client.incrby(full_key, amount)

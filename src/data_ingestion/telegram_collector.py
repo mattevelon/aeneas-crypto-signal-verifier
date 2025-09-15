@@ -21,23 +21,36 @@ from src.core.signal_detector import SignalDetector
 
 logger = structlog.get_logger()
 
+# Check if Telegram credentials are available
+TELEGRAM_ENABLED = settings.has_telegram_credentials
+
 
 class TelegramCollector:
     """Telegram message collector and processor."""
     
     def __init__(self):
-        self.client = TelegramClient(
-            settings.telegram_session_name,
-            settings.telegram_api_id,
-            settings.telegram_api_hash
-        )
+        self.client = None
         self.channels = settings.telegram_channels_list
         self.signal_detector = SignalDetector()
         self.message_queue = asyncio.Queue(maxsize=10000)
         self.is_running = False
+        self.enabled = TELEGRAM_ENABLED
+        
+        if self.enabled:
+            self.client = TelegramClient(
+                settings.telegram_session_name,
+                settings.telegram_api_id,
+                settings.telegram_api_hash
+            )
+        else:
+            logger.warning("Telegram collector disabled: missing credentials")
     
     async def start(self):
         """Start the Telegram client and connect."""
+        if not self.enabled:
+            logger.info("Telegram collector skipped: no credentials configured")
+            return
+            
         try:
             await self.client.start(phone=settings.telegram_phone_number)
             logger.info("Telegram client started")
@@ -71,8 +84,9 @@ class TelegramCollector:
     async def stop(self):
         """Stop the Telegram client."""
         self.is_running = False
-        await self.client.disconnect()
-        logger.info("Telegram client stopped")
+        if self.client and self.enabled:
+            await self.client.disconnect()
+            logger.info("Telegram client stopped")
     
     async def handle_new_message(self, event):
         """Handle incoming Telegram messages."""
@@ -205,9 +219,13 @@ telegram_collector = TelegramCollector()
 
 async def start_telegram_collector():
     """Start the Telegram collector."""
-    await telegram_collector.start()
+    if TELEGRAM_ENABLED:
+        await telegram_collector.start()
+    else:
+        logger.info("Telegram collector not started: credentials not configured")
 
 
 async def stop_telegram_collector():
     """Stop the Telegram collector."""
-    await telegram_collector.stop()
+    if TELEGRAM_ENABLED:
+        await telegram_collector.stop()

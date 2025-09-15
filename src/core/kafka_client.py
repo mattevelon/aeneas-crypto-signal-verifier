@@ -42,8 +42,9 @@ async def init_kafka():
         await create_topics()
         
     except Exception as e:
-        logger.error("Failed to initialize Kafka", error=str(e))
-        raise
+        logger.warning(f"Kafka initialization failed (non-critical): {e}")
+        logger.info("Application will continue without Kafka support")
+        # Don't raise - allow app to continue without Kafka
 
 
 async def close_kafka():
@@ -73,10 +74,8 @@ async def create_topics():
     logger.info(f"Kafka topics ready: {topics}")
 
 
-def get_producer() -> AIOKafkaProducer:
+def get_producer() -> Optional[AIOKafkaProducer]:
     """Get Kafka producer instance."""
-    if not kafka_producer:
-        raise RuntimeError("Kafka producer not initialized")
     return kafka_producer
 
 
@@ -88,6 +87,10 @@ async def send_event(
     """Send event to Kafka topic."""
     try:
         producer = get_producer()
+        if not producer:
+            logger.debug(f"Kafka not available, skipping event to {topic}")
+            return False
+            
         await producer.send(
             topic=topic,
             value=event,

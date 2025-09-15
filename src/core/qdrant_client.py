@@ -2,35 +2,50 @@
 Qdrant vector database client.
 """
 
-from typing import Optional, List, Dict, Any
-import uuid
-
+from typing import List, Dict, Any, Optional
+import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct,
     Filter, FieldCondition, MatchValue,
-    SearchRequest, SearchParams
+    SearchRequest, UpdateStatus
 )
 import structlog
+import time
+from functools import wraps
 
 from src.config.settings import settings
 
 logger = structlog.get_logger()
+
+# Rate limiting configuration
+RATE_LIMIT_REQUESTS = 100  # requests per minute
+RATE_LIMIT_WINDOW = 60  # seconds
+request_times = []
 
 # Global Qdrant client
 qdrant_client: Optional[QdrantClient] = None
 
 
 async def init_qdrant():
-    """Initialize Qdrant client and collections."""
+    """Initialize Qdrant connection with optional API key authentication."""
     global qdrant_client
     
     try:
-        qdrant_client = QdrantClient(
-            url=settings.vector_db_url,
-            api_key=settings.qdrant_api_key,
-            timeout=30
-        )
+        # Check if API key is configured for access control
+        client_params = {
+            "host": settings.qdrant_host,
+            "port": settings.qdrant_port,
+            "grpc_port": settings.qdrant_grpc_port,
+            "prefer_grpc": True
+        }
+        
+        # Add API key if configured
+        if hasattr(settings, 'qdrant_api_key') and settings.qdrant_api_key:
+            client_params["api_key"] = settings.qdrant_api_key
+            logger.info("Qdrant client initialized with API key authentication")
+        
+        qdrant_client = QdrantClient(**client_params)
         
         # Create collections if they don't exist
         await create_collections()
@@ -48,16 +63,26 @@ async def create_collections():
         collections = qdrant_client.get_collections()
         existing_collections = [c.name for c in collections.collections]
         
-        # Create signals collection
+        # Create signals collection with optimized index
         if settings.vector_collection_name not in existing_collections:
             qdrant_client.create_collection(
                 collection_name=settings.vector_collection_name,
                 vectors_config=VectorParams(
                     size=1536,  # OpenAI embedding dimension
-                    distance=Distance.COSINE
-                )
+                    distance=Distance.COSINE,
+                    hnsw_config={
+                        "m": 16,  # Number of edges per node
+                        "ef_construct": 100,  # Size of dynamic candidate list
+                        "full_scan_threshold": 10000  # Use HNSW for collections > 10k vectors
+                    }
+                ),
+                optimizers_config={
+                    "indexing_threshold": 20000,  # Start indexing after 20k vectors
+                    "memmap_threshold": 1000000,  # Use memmap for large collections
+                    "default_segment_number": 2  # Number of segments for parallel processing
+                }
             )
-            logger.info(f"Created collection: {settings.vector_collection_name}")
+            logger.info(f"Created optimized collection: {settings.vector_collection_name}")
         
         # Create historical patterns collection
         if "patterns" not in existing_collections:
@@ -82,26 +107,54 @@ def get_qdrant() -> QdrantClient:
     return qdrant_client
 
 
+def rate_limit(func):
+    """Rate limiting decorator for Qdrant operations."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        global request_times
+        current_time = time.time()
+        
+        # Remove old requests outside the window
+        request_times = [t for t in request_times if current_time - t < RATE_LIMIT_WINDOW]
+        
+        # Check if we've exceeded the rate limit
+        if len(request_times) >= RATE_LIMIT_REQUESTS:
+            sleep_time = RATE_LIMIT_WINDOW - (current_time - request_times[0])
+            if sleep_time > 0:
+                logger.warning(f"Rate limit reached, sleeping for {sleep_time:.2f} seconds")
+                time.sleep(sleep_time)
+        
+        # Record this request
+        request_times.append(current_time)
+        
+        return func(*args, **kwargs)
+    return wrapper
+
+
 class VectorStore:
-    """Vector storage operations."""
+    """Vector database operations with access control and rate limiting."""
     
-    def __init__(self, collection_name: str = None):
-        self.collection_name = collection_name or settings.vector_collection_name
+    def __init__(self):
+        self.collection_name = "signals"
+        self.vector_size = 1536  # OpenAI embeddings dimension
+        self.api_key = settings.qdrant_api_key if hasattr(settings, 'qdrant_api_key') else None
+        self.access_control_enabled = bool(self.api_key)
     
-    async def upsert(
+    @rate_limit
+    async def upsert_signal(
         self,
-        vector: List[float],
-        metadata: Dict[str, Any],
-        id: Optional[str] = None
-    ) -> str:
-        """Insert or update vector with metadata."""
+        signal_id: str,
+        embedding: List[float],
+        metadata: Dict[str, Any]
+    ) -> bool:
+        """Insert or update a signal vector with rate limiting."""
         try:
             client = get_qdrant()
-            point_id = id or str(uuid.uuid4())
+            point_id = signal_id
             
             point = PointStruct(
                 id=point_id,
-                vector=vector,
+                vector=embedding,
                 payload=metadata
             )
             
@@ -111,20 +164,21 @@ class VectorStore:
             )
             
             logger.debug(f"Vector upserted", collection=self.collection_name, id=point_id)
-            return point_id
+            return True
             
         except Exception as e:
             logger.error("Failed to upsert vector", error=str(e))
             raise
     
-    async def search(
+    @rate_limit
+    async def search_similar(
         self,
-        query_vector: List[float],
+        query_embedding: List[float],
         limit: int = 10,
         score_threshold: float = 0.7,
         filter_conditions: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
-        """Search for similar vectors."""
+        """Search for similar signals with rate limiting."""
         try:
             client = get_qdrant()
             
@@ -143,7 +197,7 @@ class VectorStore:
             
             results = client.search(
                 collection_name=self.collection_name,
-                query_vector=query_vector,
+                query_vector=query_embedding,
                 limit=limit,
                 score_threshold=score_threshold,
                 query_filter=filter_obj
@@ -162,28 +216,29 @@ class VectorStore:
             logger.error("Failed to search vectors", error=str(e))
             return []
     
-    async def delete(self, ids: List[str]) -> bool:
-        """Delete vectors by IDs."""
+    @rate_limit
+    async def delete_signal(self, signal_id: str) -> bool:
+        """Delete a signal from the vector store with rate limiting."""
         try:
             client = get_qdrant()
             client.delete(
                 collection_name=self.collection_name,
-                points_selector=ids
+                points_selector=[signal_id]
             )
-            logger.debug(f"Vectors deleted", collection=self.collection_name, count=len(ids))
+            logger.debug(f"Vector deleted", collection=self.collection_name, id=signal_id)
             return True
             
         except Exception as e:
-            logger.error("Failed to delete vectors", error=str(e))
+            logger.error("Failed to delete vector", error=str(e))
             return False
     
-    async def get_by_id(self, id: str) -> Optional[Dict[str, Any]]:
-        """Get vector by ID."""
+    @rate_limit
+    async def get_collection_info(self) -> Dict[str, Any]:
+        """Get collection statistics with rate limiting."""
         try:
             client = get_qdrant()
-            results = client.retrieve(
-                collection_name=self.collection_name,
-                ids=[id]
+            results = client.get_collection_stats(
+                collection_name=self.collection_name
             )
             
             if results:

@@ -9,30 +9,46 @@ import structlog
 
 logger = structlog.get_logger()
 
+# Check if LLM credentials are available
+LLM_ENABLED = settings.has_llm_credentials
+
 
 class LLMClient:
     """Client for interacting with LLM via OpenRouter."""
     
     def __init__(self):
         """Initialize the LLM client."""
+        self.client = None
+        self.model = None
+        self.enabled = LLM_ENABLED
+        
+        if not self.enabled:
+            logger.warning("LLM client disabled: missing API key")
+            return
+            
         # OpenRouter uses OpenAI-compatible API
         base_url = "https://openrouter.ai/api/v1"
         
-        # For OpenRouter with DeepSeek
-        if "openrouter" in settings.llm_provider.lower():
-            self.client = OpenAI(
-                base_url=base_url,
-                api_key=settings.llm_api_key,
-            )
-            # Use the model from settings or default to DeepSeek
-            self.model = settings.llm_model if settings.llm_model else "deepseek/deepseek-chat-v3.1:free"
-        else:
-            # Standard OpenAI
-            self.client = OpenAI(api_key=settings.llm_api_key)
-            self.model = settings.llm_model
-        
-        self.temperature = settings.llm_temperature
-        self.max_tokens = settings.llm_max_tokens
+        try:
+            # For OpenRouter with DeepSeek
+            if "openrouter" in settings.llm_provider.lower():
+                self.client = OpenAI(
+                    base_url=base_url,
+                    api_key=settings.llm_api_key,
+                )
+                # Use the model from settings or default to DeepSeek
+                self.model = settings.llm_model if settings.llm_model else "deepseek/deepseek-chat-v3.1:free"
+            else:
+                # Standard OpenAI
+                self.client = OpenAI(api_key=settings.llm_api_key)
+                self.model = settings.llm_model
+            
+            self.temperature = settings.llm_temperature
+            self.max_tokens = settings.llm_max_tokens
+            logger.info(f"LLM client initialized with provider: {settings.llm_provider}")
+        except Exception as e:
+            logger.error(f"Failed to initialize LLM client: {str(e)}")
+            self.enabled = False
         
     def analyze_signal(self, message_text: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -45,6 +61,14 @@ class LLMClient:
         Returns:
             Analysis results including validity, risk assessment, and recommendations
         """
+        if not self.enabled or not self.client:
+            logger.warning("LLM analysis skipped: client not available")
+            return {
+                "success": False,
+                "error": "LLM service not configured",
+                "analysis": None
+            }
+            
         try:
             system_prompt = """You are an expert cryptocurrency trading signal analyzer. 
             Analyze the provided trading signal and return a structured assessment including:
@@ -116,6 +140,9 @@ class LLMClient:
         Returns:
             Formatted explanation appropriate for the expertise level
         """
+        if not self.enabled or not self.client:
+            return "LLM service not configured - unable to generate explanation."
+            
         try:
             level_prompts = {
                 "novice": "Explain in simple terms for someone new to trading",

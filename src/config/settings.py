@@ -4,7 +4,8 @@ Application settings using Pydantic for validation and environment variable load
 
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
+import warnings
 
 
 class Settings(BaseSettings):
@@ -26,7 +27,8 @@ class Settings(BaseSettings):
     # Database Configuration
     database_url: str = Field(
         default="postgresql://crypto_user:crypto_password@localhost:5432/crypto_signals",
-        description="PostgreSQL connection URL"
+        description="PostgreSQL connection URL",
+        env="DATABASE_URL"
     )
     database_pool_size: int = Field(default=20, description="Database connection pool size")
     database_max_overflow: int = Field(default=40, description="Maximum overflow connections")
@@ -38,16 +40,16 @@ class Settings(BaseSettings):
     redis_max_connections: int = Field(default=50, description="Max Redis connections")
     
     # Telegram Configuration
-    telegram_api_id: int = Field(description="Telegram API ID")
-    telegram_api_hash: str = Field(description="Telegram API Hash")
-    telegram_phone_number: str = Field(description="Telegram phone number")
+    telegram_api_id: Optional[int] = Field(default=None, description="Telegram API ID")
+    telegram_api_hash: Optional[str] = Field(default=None, description="Telegram API Hash")
+    telegram_phone_number: Optional[str] = Field(default=None, description="Telegram phone number")
     telegram_session_name: str = Field(default="crypto_signals_bot", description="Session name")
     telegram_channels: str = Field(default="", description="Comma-separated channel list")
     
     # LLM Configuration
     llm_provider: str = Field(default="openai", description="LLM provider")
     llm_model: str = Field(default="gpt-4-turbo-preview", description="LLM model")
-    llm_api_key: str = Field(description="LLM API key")
+    llm_api_key: Optional[str] = Field(default=None, description="LLM API key")
     llm_temperature: float = Field(default=0.3, description="LLM temperature")
     llm_max_tokens: int = Field(default=4000, description="Max tokens")
     llm_timeout: int = Field(default=30, description="LLM timeout")
@@ -114,6 +116,54 @@ class Settings(BaseSettings):
         if isinstance(self.telegram_channels, str) and self.telegram_channels:
             return [channel.strip() for channel in self.telegram_channels.split(",")]
         return []
+    
+    @model_validator(mode='after')
+    def validate_credentials(self):
+        """Validate and warn about missing credentials."""
+        missing_critical = []
+        missing_optional = []
+        
+        # Critical credentials
+        if not self.database_url:
+            missing_critical.append("DATABASE_URL")
+        
+        # Important but not critical (app can run without them)
+        if not self.telegram_api_id or not self.telegram_api_hash:
+            missing_optional.append("Telegram credentials (telegram_api_id, telegram_api_hash)")
+            
+        if not self.llm_api_key:
+            missing_optional.append("LLM API key (llm_api_key)")
+            
+        if not self.binance_api_key and not self.kucoin_api_key:
+            missing_optional.append("Exchange API keys (binance or kucoin)")
+        
+        # Raise error for critical missing
+        if missing_critical:
+            raise ValueError(f"Critical configuration missing: {', '.join(missing_critical)}")
+        
+        # Warn for optional missing
+        if missing_optional:
+            warnings.warn(
+                f"Optional services not configured (app will run with limited functionality): {', '.join(missing_optional)}",
+                UserWarning
+            )
+        
+        return self
+    
+    @property
+    def has_telegram_credentials(self) -> bool:
+        """Check if Telegram credentials are available."""
+        return bool(self.telegram_api_id and self.telegram_api_hash and self.telegram_phone_number)
+    
+    @property
+    def has_llm_credentials(self) -> bool:
+        """Check if LLM credentials are available."""
+        return bool(self.llm_api_key)
+    
+    @property
+    def has_exchange_credentials(self) -> bool:
+        """Check if any exchange credentials are available."""
+        return bool(self.binance_api_key or self.kucoin_api_key)
 
 
 # Create global settings instance

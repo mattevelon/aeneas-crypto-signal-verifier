@@ -19,6 +19,7 @@ from src.core.database import init_db, close_db
 from src.core.redis_client import init_redis, close_redis
 from src.core.kafka_client import init_kafka, close_kafka
 from src.core.qdrant_client import init_qdrant
+from src.core.cache_warmer import start_cache_warming, stop_cache_warming
 
 # Configure structured logging
 structlog.configure(
@@ -55,21 +56,45 @@ async def lifespan(app: FastAPI):
     await init_redis()
     logger.info("Redis initialized")
     
-    # Initialize Kafka
-    await init_kafka()
-    logger.info("Kafka initialized")
+    # Initialize Kafka (non-critical, allow failure)
+    try:
+        await init_kafka()
+        logger.info("Kafka initialized")
+    except Exception as e:
+        logger.warning(f"Kafka initialization failed (non-critical): {e}")
     
-    # Initialize Qdrant
-    await init_qdrant()
-    logger.info("Qdrant initialized")
+    # Initialize Qdrant (non-critical for basic operation)
+    try:
+        await init_qdrant()
+        logger.info("Qdrant initialized")
+    except Exception as e:
+        logger.warning(f"Qdrant initialization failed (non-critical): {e}")
+    
+    # Start cache warming (non-critical)
+    try:
+        await start_cache_warming()
+        logger.info("Cache warming started")
+    except Exception as e:
+        logger.warning(f"Cache warming failed to start (non-critical): {e}")
     
     yield
     
     # Shutdown
     logger.info("Shutting down Crypto Signals Verification System")
+    
+    try:
+        await stop_cache_warming()
+    except Exception as e:
+        logger.warning(f"Error stopping cache warming: {e}")
+    
     await close_db()
     await close_redis()
-    await close_kafka()
+    
+    try:
+        await close_kafka()
+    except Exception as e:
+        logger.warning(f"Error closing Kafka: {e}")
+    
     logger.info("Cleanup completed")
 
 

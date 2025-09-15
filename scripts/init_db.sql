@@ -54,15 +54,15 @@ CREATE TABLE IF NOT EXISTS telegram_messages (
     PRIMARY KEY (id, timestamp)
 ) PARTITION BY RANGE (timestamp);
 
--- Create partitions for the last 3 months and next month
-CREATE TABLE telegram_messages_2024_10 PARTITION OF telegram_messages
-    FOR VALUES FROM ('2024-10-01') TO ('2024-11-01');
-CREATE TABLE telegram_messages_2024_11 PARTITION OF telegram_messages
-    FOR VALUES FROM ('2024-11-01') TO ('2024-12-01');
-CREATE TABLE telegram_messages_2024_12 PARTITION OF telegram_messages
-    FOR VALUES FROM ('2024-12-01') TO ('2025-01-01');
+-- Create partitions for current and future months (2025)
 CREATE TABLE telegram_messages_2025_01 PARTITION OF telegram_messages
     FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+CREATE TABLE telegram_messages_2025_02 PARTITION OF telegram_messages
+    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+CREATE TABLE telegram_messages_2025_03 PARTITION OF telegram_messages
+    FOR VALUES FROM ('2025-03-01') TO ('2025-04-01');
+CREATE TABLE telegram_messages_2025_04 PARTITION OF telegram_messages
+    FOR VALUES FROM ('2025-04-01') TO ('2025-05-01');
 
 -- Create indexes for telegram_messages
 CREATE INDEX idx_telegram_messages_channel ON telegram_messages(channel_id);

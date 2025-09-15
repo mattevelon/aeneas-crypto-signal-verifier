@@ -222,8 +222,8 @@ class SignalDetector:
                 "leverage": extracted_data.get("leverage")
             }
             
-            # Get LLM analysis
-            result = await self.llm_client.analyze_signal(text, context)
+            # Get LLM analysis (analyze_signal is not async)
+            result = self.llm_client.analyze_signal(text, context)
             
             if result["success"]:
                 # Parse LLM response
