@@ -118,14 +118,15 @@ class TraceCorrelator:
     def __init__(self, trace_manager: TraceContextManager):
         self.trace_manager = trace_manager
     
-    def add_trace_context(self, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def add_trace_context(self, logger, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Add trace context to log event."""
         # Add OpenTelemetry trace context
-        if trace_id := self.trace_manager.get_current_trace_id():
-            event_dict['trace_id'] = trace_id
-        
-        if span_id := self.trace_manager.get_current_span_id():
-            event_dict['span_id'] = span_id
+        current_span = trace.get_current_span()
+        if current_span and current_span.is_recording():
+            ctx = current_span.get_span_context()
+            event_dict['trace_id'] = format(ctx.trace_id, '032x')
+            event_dict['span_id'] = format(ctx.span_id, '016x')
+            event_dict['trace_flags'] = ctx.trace_flags
         
         # Add custom trace context
         if ctx := trace_context.get():

@@ -65,24 +65,25 @@ async def lifespan(app: FastAPI):
     # Initialize logging and tracing
     setup_logging(
         log_level=settings.log_level,
-        log_file=f"{settings.log_directory}/aeneas.log" if settings.log_directory else None,
-        json_logs=settings.environment != "development"
+        log_file=None,  # Log file path can be configured if needed
+        json_logs=settings.app_env != "development"
     )
     
     # Initialize tracing
     trace_manager = init_tracing(
         service_name="aeneas",
-        environment=settings.environment,
+        environment=settings.app_env,
         otlp_endpoint=settings.otlp_endpoint if hasattr(settings, 'otlp_endpoint') else None
     )
     
-    # Initialize log retention
-    retention_manager = init_retention_manager(
-        log_dir=settings.log_directory,
-        retention_days=30,
-        archive_days=90
-    )
-    await start_retention_management()
+    # Initialize log retention (if log directory is configured)
+    if hasattr(settings, 'log_directory'):
+        retention_manager = init_retention_manager(
+            log_dir=settings.log_directory,
+            retention_days=30,
+            archive_days=90
+        )
+        await start_retention_management()
     
     # Initialize services
     logger.info("Starting services...")

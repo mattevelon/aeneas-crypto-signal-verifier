@@ -74,7 +74,7 @@ def add_context_processor(logger: logging.Logger, method_name: str, event_dict: 
     
     # Add service metadata
     event_dict['service'] = 'aeneas'
-    event_dict['environment'] = settings.environment
+    event_dict['environment'] = settings.app_env
     
     return event_dict
 

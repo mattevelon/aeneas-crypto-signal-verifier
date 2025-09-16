@@ -22,8 +22,19 @@ class RateLimiter:
     """Token bucket rate limiter using Redis."""
     
     def __init__(self):
-        self.redis = get_redis()
+        self._redis = None
         self.settings = get_settings()
+    
+    @property
+    def redis(self):
+        """Lazy Redis initialization."""
+        if self._redis is None:
+            try:
+                self._redis = get_redis()
+            except RuntimeError:
+                # Redis not initialized, return None
+                pass
+        return self._redis
     
     async def check_rate_limit(
         self,

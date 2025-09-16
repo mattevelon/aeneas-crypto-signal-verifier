@@ -79,8 +79,19 @@ class EnhancedConnectionManager:
         self.subscriptions: Dict[SubscriptionType, Set[str]] = defaultdict(set)
         self.message_queues: Dict[str, asyncio.Queue] = {}
         self.heartbeat_tasks: Dict[str, asyncio.Task] = {}
-        self.redis = get_redis()
+        self._redis = None
         self.recovery_window = timedelta(minutes=5)
+    
+    @property
+    def redis(self):
+        """Lazy Redis initialization."""
+        if self._redis is None:
+            try:
+                self._redis = get_redis()
+            except RuntimeError:
+                # Redis not initialized, return None
+                pass
+        return self._redis
         
     async def connect(
         self,
