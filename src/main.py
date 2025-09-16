@@ -15,7 +15,7 @@ import uvicorn
 
 from src.config.settings import get_settings
 from src.middleware.rate_limiter import RateLimitMiddleware
-from src.api import health, signals, collector, channels, performance, feedback, websocket, auth, statistics
+from src.api import health, signals, collector, channels, performance, feedback, websocket, websocket_enhanced, auth, statistics
 from src.core.database import init_db, close_db
 from src.core.redis_client import init_redis, close_redis
 from src.core.kafka_client import init_kafka, close_kafka
@@ -152,6 +152,7 @@ app.include_router(channels.router, prefix="/api/v1/channels", tags=["Channels"]
 app.include_router(performance.router, prefix="/api/v1/performance", tags=["Performance"])
 app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["Feedback"])
 app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
+app.include_router(websocket_enhanced.router, prefix="/ws/v2", tags=["WebSocketV2"])
 
 
 @app.exception_handler(Exception)
