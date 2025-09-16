@@ -81,10 +81,53 @@ class PatternRecognitionEngine:
                 confidence_weight=0.7
             ),
             
+            # Entry patterns with dollar signs
+            SignalPattern(
+                name="entry_dollar_single",
+                pattern=r"(?:entry|buy|long)[\s:]*\$?([\d,]+(?:\.\d+)?)",
+                confidence_weight=0.9
+            ),
+            SignalPattern(
+                name="entry_dollar_range",
+                pattern=r"(?:entry|buy|long)[\s:]*\$?([\d,]+(?:\.\d+)?)\s*[-–]\s*\$?([\d,]+(?:\.\d+)?)",
+                confidence_weight=0.95
+            ),
+            
+            # Direction patterns
+            SignalPattern(
+                name="direction_long",
+                pattern=r"(?i)(?:direction|side|position)[\s:]*(long|buy)",
+                confidence_weight=0.9,
+                signal_type=SignalType.LONG
+            ),
+            SignalPattern(
+                name="direction_short",
+                pattern=r"(?i)(?:direction|side|position)[\s:]*(short|sell)",
+                confidence_weight=0.9,
+                signal_type=SignalType.SHORT
+            ),
+            SignalPattern(
+                name="simple_long",
+                pattern=r"(?i)\b(long)\b",
+                confidence_weight=0.7,
+                signal_type=SignalType.LONG
+            ),
+            SignalPattern(
+                name="simple_short",
+                pattern=r"(?i)\b(short)\b",
+                confidence_weight=0.7,
+                signal_type=SignalType.SHORT
+            ),
+            
             # Stop Loss Patterns
             SignalPattern(
                 name="stop_loss_explicit",
                 pattern=r"(?:stop\s*loss|sl|stop)[\s:]*(?:@|at)?\s*([\d.,]+)",
+                confidence_weight=0.95
+            ),
+            SignalPattern(
+                name="stop_loss_dollar",
+                pattern=r"(?:stop\s*loss|sl|stop)[\s:]*\$?([\d,]+(?:\.\d+)?)",
                 confidence_weight=0.95
             ),
             SignalPattern(
@@ -103,6 +146,11 @@ class PatternRecognitionEngine:
                 name="take_profit_single",
                 pattern=r"(?:take\s*profit|tp|target)[\s:]*(?:@|at)?\s*([\d.,]+)",
                 confidence_weight=0.95
+            ),
+            SignalPattern(
+                name="take_profit_dollar",
+                pattern=r"(?:tp\d?|target\s*\d?|take\s*profit\s*\d?)[\s:]*\$?([\d,]+(?:\.\d+)?)",
+                confidence_weight=0.9
             ),
             SignalPattern(
                 name="take_profit_multiple",

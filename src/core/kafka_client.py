@@ -14,6 +14,26 @@ from src.config.settings import settings
 
 logger = structlog.get_logger()
 
+
+class KafkaClient:
+    """Wrapper class for Kafka operations."""
+    
+    def __init__(self):
+        self.producer = None
+        self.consumer = None
+        
+    async def send_message(self, topic: str, message: Any):
+        """Send a message to a Kafka topic."""
+        # Placeholder implementation
+        logger.info(f"Would send message to topic {topic}")
+        
+    async def close(self):
+        """Close Kafka connections."""
+        if self.producer:
+            await self.producer.stop()
+        if self.consumer:
+            await self.consumer.stop()
+
 # Global Kafka clients
 kafka_producer: Optional[AIOKafkaProducer] = None
 kafka_consumers: Dict[str, AIOKafkaConsumer] = {}

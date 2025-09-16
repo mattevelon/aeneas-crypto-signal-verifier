@@ -1,7 +1,7 @@
 """Result Processor for final signal processing and distribution."""
 
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import logging
 import json

@@ -85,3 +85,6 @@ async def get_db_context():
             raise
         finally:
             await session.close()
+
+# Alias for backward compatibility
+get_async_session = get_db_context

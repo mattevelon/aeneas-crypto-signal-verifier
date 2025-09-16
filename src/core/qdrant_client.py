@@ -32,11 +32,17 @@ async def init_qdrant():
     global qdrant_client
     
     try:
+        # Parse URL to get host and port
+        from urllib.parse import urlparse
+        parsed_url = urlparse(settings.vector_db_url)
+        host = parsed_url.hostname or "localhost"
+        port = parsed_url.port or 6333
+        
         # Check if API key is configured for access control
         client_params = {
-            "host": settings.qdrant_host,
-            "port": settings.qdrant_port,
-            "grpc_port": settings.qdrant_grpc_port,
+            "host": host,
+            "port": port,
+            "grpc_port": 6334,  # Default gRPC port
             "prefer_grpc": True
         }
         
@@ -255,5 +261,5 @@ class VectorStore:
 
 
 # Create vector store instances
-signal_vectors = VectorStore("signals")
-pattern_vectors = VectorStore("patterns")
+signal_vectors = VectorStore()
+pattern_vectors = VectorStore()

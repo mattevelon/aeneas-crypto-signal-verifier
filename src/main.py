@@ -14,12 +14,17 @@ import structlog
 import uvicorn
 
 from src.config.settings import settings
-from src.api import health, signals, websocket, channels, performance
+from src.api import health, signals, websocket, channels, performance, collector
 from src.core.database import init_db, close_db
 from src.core.redis_client import init_redis, close_redis
 from src.core.kafka_client import init_kafka, close_kafka
 from src.core.qdrant_client import init_qdrant
 from src.core.cache_warmer import start_cache_warming, stop_cache_warming
+from src.data_ingestion.telegram_collector_enhanced import (
+    start_enhanced_telegram_collector,
+    stop_enhanced_telegram_collector,
+    get_collector_statistics
+)
 
 # Configure structured logging
 structlog.configure(
@@ -128,12 +133,13 @@ app.add_middleware(
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-# Include routers
-app.include_router(health.router, prefix="/api/v1", tags=["health"])
-app.include_router(signals.router, prefix="/api/v1/signals", tags=["signals"])
-app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
-app.include_router(performance.router, prefix="/api/v1/performance", tags=["performance"])
-app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
+# Include API Routes
+app.include_router(health.router, prefix=settings.api_prefix)
+app.include_router(signals.router, prefix=settings.api_prefix)
+app.include_router(channels.router, prefix=settings.api_prefix)
+app.include_router(performance.router, prefix=settings.api_prefix)
+app.include_router(collector.router, prefix=settings.api_prefix)
+app.include_router(websocket.router, prefix=settings.api_prefix, tags=["websocket"])
 
 
 @app.exception_handler(Exception)

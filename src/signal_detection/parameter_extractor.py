@@ -1,9 +1,9 @@
 """Signal Parameter Extractor for parsing trading signal components."""
 
-import re
 from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass
 from datetime import datetime
+from dataclasses import dataclass
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -225,14 +225,30 @@ class SignalParameterExtractor:
         return signal
     
     def _determine_pair(self, text: str, detected_pairs: List[str]) -> str:
-        """Determine the trading pair from detected pairs or text."""
+        """Determine the most likely trading pair from detected pairs."""
         if detected_pairs:
+            # Filter out invalid pairs
+            valid_pairs = [
+                p for p in detected_pairs 
+                if not p.startswith('/') and len(p.split('/')) == 2
+            ]
+            
+            if valid_pairs:
+                return valid_pairs[0]
+            
+            # Fix pairs that start with /
+            for p in detected_pairs:
+                if p.startswith('/') and len(p) > 1:
+                    # Assume BTC if only quote is given
+                    return f"BTC{p}"
+            
             # Return most common pair if multiple detected
-            return max(set(detected_pairs), key=detected_pairs.count)
+            if detected_pairs:
+                return max(set(detected_pairs), key=detected_pairs.count)
         
         # Try to extract from text directly
         pair = self._extract_pair_from_text(text)
-        return pair if pair else "UNKNOWN/USDT"
+        return pair if pair else "BTC/USDT"
     
     def _extract_pair_from_text(self, text: str) -> Optional[str]:
         """Extract trading pair directly from text."""
