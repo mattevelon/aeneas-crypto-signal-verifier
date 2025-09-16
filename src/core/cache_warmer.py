@@ -48,7 +48,7 @@ class CacheWarmer:
                     # Get active signals
                     result = await db.execute(
                         select(Signal)
-                        .where(Signal.status == SignalStatus.ACTIVE)
+                        .where(Signal.status == 'ACTIVE')
                         .order_by(Signal.created_at.desc())
                         .limit(100)
                     )

@@ -59,6 +59,33 @@ def create_topics():
                 'retention.ms': '2592000000',  # 30 days
                 'compression.type': 'gzip'
             }
+        ),
+        NewTopic(
+            name="resource-alerts",
+            num_partitions=2,
+            replication_factor=1,
+            topic_configs={
+                'retention.ms': '172800000',  # 2 days
+                'compression.type': 'gzip'
+            }
+        ),
+        NewTopic(
+            name="feedback-events",
+            num_partitions=2,
+            replication_factor=1,
+            topic_configs={
+                'retention.ms': '604800000',  # 7 days
+                'compression.type': 'gzip'
+            }
+        ),
+        NewTopic(
+            name="improvement-pipeline",
+            num_partitions=1,
+            replication_factor=1,
+            topic_configs={
+                'retention.ms': '2592000000',  # 30 days
+                'compression.type': 'gzip'
+            }
         )
     ]
     

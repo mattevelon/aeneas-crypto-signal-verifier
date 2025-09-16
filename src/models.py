@@ -9,13 +9,12 @@ from enum import Enum
 from uuid import uuid4
 
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, DateTime, 
-    ForeignKey, JSON, DECIMAL, BigInteger, Text, 
-    Enum as SQLEnum, UniqueConstraint, Index
+    Column, Integer, String, Float, DateTime, Boolean, Text, JSON, ForeignKey, Index
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from sqlalchemy import DECIMAL, BigInteger, Enum as SQLEnum, UniqueConstraint
 
 Base = declarative_base()
 
@@ -154,4 +153,51 @@ class AuditLog(Base):
         Index('idx_audit_log_user_id', 'user_id'),
         Index('idx_audit_log_entity', 'entity_type', 'entity_id'),
         Index('idx_audit_log_created_at', 'created_at'),
+    )
+
+
+class UserFeedback(Base):
+    """User feedback on signals."""
+    __tablename__ = "user_feedback"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    signal_id = Column(UUID(as_uuid=True), ForeignKey('signals.id'), nullable=False)
+    user_id = Column(String(255), nullable=False)
+    rating = Column(Integer, nullable=False)  # 1-5 rating
+    feedback_type = Column(String(50), nullable=False)  # accuracy, timing, risk, execution, other
+    comment = Column(Text)
+    sentiment = Column(String(20))  # positive, negative, neutral, mixed
+    is_actionable = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_feedback_signal', 'signal_id'),
+        Index('idx_feedback_user', 'user_id'),
+        Index('idx_feedback_created', 'created_at'),
+    )
+
+
+class ChannelStatistics(Base):
+    """Channel performance statistics."""
+    __tablename__ = "channel_statistics"
+    
+    id = Column(Integer, primary_key=True)
+    channel_id = Column(Integer, ForeignKey('telegram_channels.id'), nullable=False)
+    date = Column(DateTime, nullable=False)
+    total_signals = Column(Integer, default=0)
+    successful_signals = Column(Integer, default=0)
+    failed_signals = Column(Integer, default=0)
+    avg_return_percent = Column(Float, default=0.0)
+    win_rate = Column(Float, default=0.0)
+    avg_rating = Column(Float, default=0.0)
+    total_feedback_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Unique constraint for one record per channel per date
+    __table_args__ = (
+        UniqueConstraint('channel_id', 'date', name='uq_channel_date'),
+        Index('idx_stats_channel', 'channel_id'),
+        Index('idx_stats_date', 'date'),
     )

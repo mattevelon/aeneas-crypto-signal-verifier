@@ -14,7 +14,7 @@ import structlog
 import uvicorn
 
 from src.config.settings import settings
-from src.api import health, signals, websocket, channels, performance, collector
+from src.api import health, signals, websocket, channels, performance, collector, feedback
 from src.core.database import init_db, close_db
 from src.core.redis_client import init_redis, close_redis
 from src.core.kafka_client import init_kafka, close_kafka
@@ -139,6 +139,7 @@ app.include_router(signals.router, prefix=settings.api_prefix)
 app.include_router(channels.router, prefix=settings.api_prefix)
 app.include_router(performance.router, prefix=settings.api_prefix)
 app.include_router(collector.router, prefix=settings.api_prefix)
+app.include_router(feedback.router, prefix=settings.api_prefix)
 app.include_router(websocket.router, prefix=settings.api_prefix, tags=["websocket"])
 
 
