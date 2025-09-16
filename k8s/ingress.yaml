@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aeneas-ingress
+  namespace: aeneas
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/websocket-services: "aeneas-api"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  tls:
+  - hosts:
+    - api.aeneas.io
+    - ws.aeneas.io
+    secretName: aeneas-tls
+  rules:
+  - host: api.aeneas.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: aeneas-api
+            port:
+              number: 80
+  - host: ws.aeneas.io
+    http:
+      paths:
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: aeneas-api
+            port:
+              number: 80

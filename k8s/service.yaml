@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aeneas-api
+  namespace: aeneas
+  labels:
+    app: aeneas-api
+    component: backend
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  type: LoadBalancer
+  selector:
+    app: aeneas-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aeneas-api-internal
+  namespace: aeneas
+  labels:
+    app: aeneas-api
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: aeneas-api
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aeneas-worker
+  namespace: aeneas
+  labels:
+    app: aeneas-worker
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: aeneas-worker
+  ports:
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
