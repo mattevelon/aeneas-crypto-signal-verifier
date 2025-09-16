@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any
 
 from fastapi import FastAPI, Request
+from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -16,6 +17,7 @@ import uvicorn
 from src.config.settings import get_settings
 from src.middleware.rate_limiter import RateLimitMiddleware
 from src.api import health, signals, collector, channels, performance, feedback, websocket, websocket_enhanced, auth, statistics
+from src.api.docs import get_custom_openapi_schema, API_TITLE, API_VERSION, API_DESCRIPTION, TAGS_METADATA
 from src.core.database import init_db, close_db
 from src.core.redis_client import init_redis, close_redis
 from src.core.kafka_client import init_kafka, close_kafka
@@ -106,13 +108,14 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Crypto Trading Signal Verification System",
-    description="AI-powered cryptocurrency trading signal analysis and verification",
-    version="1.0.0",
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
+    openapi_tags=TAGS_METADATA
 )
 
 # Add rate limiting middleware
@@ -171,14 +174,21 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/")
-async def root() -> Dict[str, Any]:
+async def root() -> Dict[str, str]:
     """Root endpoint."""
     return {
-        "name": "Crypto Signals Verification API",
+        "message": "Crypto Trading Signal Verification System API",
         "version": "1.0.0",
-        "status": "operational",
         "docs": "/api/docs"
     }
+
+
+# Custom OpenAPI schema
+def custom_openapi():
+    return get_custom_openapi_schema(app)
+
+
+app.openapi = custom_openapi
 
 
 if __name__ == "__main__":
