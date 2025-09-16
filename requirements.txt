@@ -38,6 +38,7 @@ numpy==1.26.3
 pandas==2.1.4
 scipy==1.11.4
 scikit-learn==1.4.0
+matplotlib==3.8.2
 
 # Technical Analysis
 ta-lib==0.6.7

@@ -168,3 +168,7 @@ class Settings(BaseSettings):
 
 # Create global settings instance
 settings = Settings()
+
+def get_settings():
+    """Get settings instance."""
+    return settings
