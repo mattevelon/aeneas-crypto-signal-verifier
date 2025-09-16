@@ -16,6 +16,15 @@ import uvicorn
 
 from src.config.settings import get_settings
 from src.middleware.rate_limiter import RateLimitMiddleware
+from src.middleware.logging_middleware import (
+    LoggingMiddleware,
+    AuditLoggingMiddleware,
+    ErrorLoggingMiddleware,
+    MetricsLoggingMiddleware
+)
+from src.core.logging_config import setup_logging
+from src.core.trace_context import init_tracing
+from src.core.log_retention import init_retention_manager, start_retention_management, stop_retention_management
 from src.api import health, signals, collector, channels, performance, feedback, websocket, websocket_enhanced, auth, statistics
 from src.api.docs import get_custom_openapi_schema, API_TITLE, API_VERSION, API_DESCRIPTION, TAGS_METADATA
 from src.core.database import init_db, close_db
@@ -53,8 +62,30 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle."""
-    # Startup
-    logger.info("Starting Crypto Signals Verification System")
+    # Initialize logging and tracing
+    setup_logging(
+        log_level=settings.log_level,
+        log_file=f"{settings.log_directory}/aeneas.log" if settings.log_directory else None,
+        json_logs=settings.environment != "development"
+    )
+    
+    # Initialize tracing
+    trace_manager = init_tracing(
+        service_name="aeneas",
+        environment=settings.environment,
+        otlp_endpoint=settings.otlp_endpoint if hasattr(settings, 'otlp_endpoint') else None
+    )
+    
+    # Initialize log retention
+    retention_manager = init_retention_manager(
+        log_dir=settings.log_directory,
+        retention_days=30,
+        archive_days=90
+    )
+    await start_retention_management()
+    
+    # Initialize services
+    logger.info("Starting services...")
     
     # Initialize database
     await init_db()
@@ -118,8 +149,22 @@ app = FastAPI(
     openapi_tags=TAGS_METADATA
 )
 
-# Add rate limiting middleware
+# Add middleware in order (last added = first executed)
 settings = get_settings()
+
+# Metrics logging (outermost)
+app.add_middleware(MetricsLoggingMiddleware)
+
+# Error logging
+app.add_middleware(ErrorLoggingMiddleware)
+
+# Audit logging
+app.add_middleware(AuditLoggingMiddleware)
+
+# Request/response logging
+app.add_middleware(LoggingMiddleware)
+
+# Rate limiting
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=settings.rate_limit_requests_per_minute,
@@ -189,6 +234,11 @@ def custom_openapi():
 
 
 app.openapi = custom_openapi
+
+# Instrument app for tracing
+if hasattr(settings, 'enable_tracing') and settings.enable_tracing:
+    from src.core.trace_context import trace_manager
+    trace_manager.instrument_app(app)
 
 
 if __name__ == "__main__":
