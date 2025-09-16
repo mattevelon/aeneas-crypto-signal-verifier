@@ -13,8 +13,9 @@ from prometheus_client import make_asgi_app
 import structlog
 import uvicorn
 
-from src.config.settings import settings
-from src.api import health, signals, websocket, channels, performance, collector, feedback
+from src.config.settings import get_settings
+from src.middleware.rate_limiter import RateLimitMiddleware
+from src.api import health, signals, collector, channels, performance, feedback, websocket, auth, statistics
 from src.core.database import init_db, close_db
 from src.core.redis_client import init_redis, close_redis
 from src.core.kafka_client import init_kafka, close_kafka
@@ -105,13 +106,21 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Crypto Signals Verification API",
-    description="AI-powered cryptocurrency trading signal verification system",
+    title="Crypto Trading Signal Verification System",
+    description="AI-powered cryptocurrency trading signal analysis and verification",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
     lifespan=lifespan
+)
+
+# Add rate limiting middleware
+settings = get_settings()
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.rate_limit_requests_per_minute,
+    burst_size=settings.rate_limit_burst_size
 )
 
 # Add CORS middleware
@@ -133,14 +142,16 @@ app.add_middleware(
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-# Include API Routes
-app.include_router(health.router, prefix=settings.api_prefix)
-app.include_router(signals.router, prefix=settings.api_prefix)
-app.include_router(channels.router, prefix=settings.api_prefix)
-app.include_router(performance.router, prefix=settings.api_prefix)
-app.include_router(collector.router, prefix=settings.api_prefix)
-app.include_router(feedback.router, prefix=settings.api_prefix)
-app.include_router(websocket.router, prefix=settings.api_prefix, tags=["websocket"])
+# Include API routers
+app.include_router(health.router, prefix="/api/v1", tags=["Health"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(signals.router, prefix="/api/v1/signals", tags=["Signals"])
+app.include_router(statistics.router, prefix="/api/v1/stats", tags=["Statistics"])
+app.include_router(collector.router, prefix="/api/v1/collector", tags=["Collector"])
+app.include_router(channels.router, prefix="/api/v1/channels", tags=["Channels"])
+app.include_router(performance.router, prefix="/api/v1/performance", tags=["Performance"])
+app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["Feedback"])
+app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
 
 
 @app.exception_handler(Exception)

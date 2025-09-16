@@ -93,20 +93,20 @@ class TelegramMessage(Base):
     )
 
 
-class ChannelStatistics(Base):
+class ChannelStats(Base):
     """Channel statistics table."""
-    __tablename__ = "channel_statistics"
+    __tablename__ = "channel_stats"
     
-    channel_id = Column(BigInteger, primary_key=True)
+    channel_id = Column(Integer, primary_key=True)
     channel_name = Column(String(255))
     total_signals = Column(Integer, default=0)
     successful_signals = Column(Integer, default=0)
     failed_signals = Column(Integer, default=0)
     average_confidence = Column(Float)
     reputation_score = Column(Float)
-    last_signal_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_signal_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class SignalPerformance(Base):

@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from src.models import Signal, SignalPerformance
 from src.core.database import get_async_session
 from src.core.redis_client import get_redis
-from src.core.market_data import MarketDataClient
+from src.core.market_data import MarketDataProvider
 from src.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -68,9 +68,9 @@ class SignalOutcomeTracker:
     Tracks signal outcomes and performance metrics
     """
     
-    def __init__(self, market_client: Optional[MarketDataClient] = None):
+    def __init__(self, market_client: Optional[MarketDataProvider] = None):
         self.redis = get_redis()
-        self.market_client = market_client or MarketDataClient()
+        self.market_data = market_client or MarketDataProvider()
         self.tracking_interval = 60  # Check every minute
         self.max_tracking_duration = timedelta(days=7)  # Stop tracking after 7 days
         self._tracking_tasks = {}

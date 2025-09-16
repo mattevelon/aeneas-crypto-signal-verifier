@@ -24,7 +24,7 @@ import pandas as pd
 from src.models import Signal, SignalPerformance
 from src.core.database import get_async_session
 from src.core.redis_client import get_redis
-from src.core.market_data import MarketDataClient
+from src.core.market_data import MarketDataProvider
 from src.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -88,9 +88,9 @@ class SlippageAnalyzer:
     Analyzes and provides insights on trading slippage
     """
     
-    def __init__(self, market_client: Optional[MarketDataClient] = None):
+    def __init__(self, market_client: Optional[MarketDataProvider] = None):
         self.redis = get_redis()
-        self.market_client = market_client or MarketDataClient()
+        self.market_client = market_client or MarketDataProvider()
         
         # Slippage thresholds
         self.severity_thresholds = {
