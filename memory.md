@@ -31,8 +31,9 @@
 ## Configuration
 - **Environment Files**: .env contains all credentials (Telegram, LLM, Exchange APIs)
 - **Docker Services**: PostgreSQL (5432), Redis (6379), Qdrant (6333), Kafka (9092)
-- **API Keys**: OpenRouter for LLM, Binance/KuCoin for market data
+- **API Keys**: OpenRouter for LLM (DeepSeek V3.1), Binance/KuCoin for market data
 - **Monitoring**: Prometheus (9090), Grafana (3000), Jaeger (16686) - configured but not running
+- **LLM Configuration**: DeepSeek V3.1 via OpenRouter API (deepseek/deepseek-chat-v3.1:free)
 
 ## Error Handling Patterns
 - **Missing Credentials**: Services check for credentials and disable gracefully
@@ -455,3 +456,34 @@
 - **Load Testing**: Locust configuration with realistic user scenarios (smoke, load, stress, spike, soak tests)
 - **Operational Runbook**: Complete incident response procedures, troubleshooting guides, disaster recovery plans
 - **Performance Targets**: Achieved 1000+ concurrent users, p95 < 500ms response time, 5000+ signals/minute
+
+## DeepSeek V3.1 Integration (2025-09-18)
+
+### LLM Provider Configuration
+- **Model**: DeepSeek V3.1 via OpenRouter API (deepseek/deepseek-chat-v3.1:free)
+- **Provider**: OpenRouter with DeepInfra backend
+- **Temperature**: 0.3 for deterministic analysis
+- **Max Tokens**: 2000 for detailed responses
+- **Response Format**: JSON structured output for parsing
+- **Context Window**: 8000 token budget management
+
+### System Prompt Implementation
+- **Prompt File**: src/ai_integration/prompts/deepseek_v3_system.md (6,410 characters)
+- **Capabilities**: Signal analysis, risk assessment, market context evaluation, manipulation detection
+- **Response Framework**: Structured JSON with confidence scores, recommendations (EXECUTE/MONITOR/REJECT)
+- **Risk Management**: Kelly Criterion with 25% fractional sizing, VaR calculations
+- **Confidence Scoring**: HIGH (80-100), MEDIUM (50-79), LOW (0-49) based on indicator alignment
+
+### Configuration Files Created
+- **deepseek_config.py**: Model parameters and API configuration
+- **prompt_engine.py**: Updated to load DeepSeek prompt with initialization order fix
+- **llm_client.py**: Modified to use DeepSeek as default model with OpenRouter provider
+- **settings.py**: Added openrouter_api_key field for configuration
+
+### Test Results
+- **Integration Test**: Successful BTC/USDT signal analysis
+- **Confidence Score**: 68% on test signal
+- **Recommendation**: MONITOR status correctly assigned
+- **Risk Assessment**: Kelly Criterion 0.32, risk-reward ratio 2.67
+- **Response Time**: ~19.5 seconds for complete analysis
+- **Token Usage**: 449 tokens total (prompt + completion)

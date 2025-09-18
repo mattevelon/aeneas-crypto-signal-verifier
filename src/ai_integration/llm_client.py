@@ -50,7 +50,7 @@ class LLMClient:
         # API configuration
         self.providers = {
             LLMProvider.OPENAI: {
-                'api_key': self.settings.OPENAI_API_KEY,
+                'api_key': self.settings.OPENAI_API_KEY if hasattr(self.settings, 'OPENAI_API_KEY') else None,
                 'base_url': 'https://api.openai.com/v1',
                 'models': ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo'],
                 'headers': lambda key: {
@@ -69,9 +69,9 @@ class LLMClient:
                 }
             },
             LLMProvider.OPENROUTER: {
-                'api_key': self.settings.OPENROUTER_API_KEY if hasattr(self.settings, 'OPENROUTER_API_KEY') else None,
+                'api_key': self.settings.openrouter_api_key if hasattr(self.settings, 'openrouter_api_key') else None,
                 'base_url': 'https://openrouter.ai/api/v1',
-                'models': ['openai/gpt-4-turbo-preview', 'anthropic/claude-3-opus'],
+                'models': ['deepseek/deepseek-chat-v3.1', 'deepseek/deepseek-chat-v3.1:free', 'openai/gpt-4-turbo-preview', 'anthropic/claude-3-opus'],
                 'headers': lambda key: {
                     'Authorization': f'Bearer {key}',
                     'Content-Type': 'application/json',
@@ -128,6 +128,14 @@ class LLMClient:
         cached_response = await self._get_cached_response(cache_key)
         if cached_response:
             return cached_response
+        
+        # Default to OpenRouter for DeepSeek V3.1
+        if provider is None:
+            provider = LLMProvider.OPENROUTER
+        
+        # Default to DeepSeek V3.1 model (free version)
+        if model is None:
+            model = 'deepseek/deepseek-chat-v3.1:free'  # Using free version of DeepSeek V3.1
         
         # Select provider and model
         if not provider:

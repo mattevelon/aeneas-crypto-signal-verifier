@@ -6,6 +6,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,15 @@ class PromptEngine:
     
     def __init__(self):
         """Initialize prompt engine with templates."""
-        self.templates = self._initialize_templates()
         self.template_versions = {}
         self.active_templates = {}
         self.max_context_tokens = 8000
+        
+        # Load DeepSeek V3.1 system prompt FIRST
+        self.deepseek_system_prompt = self._load_deepseek_prompt()
+        
+        # Initialize templates AFTER loading the prompt
+        self.templates = self._initialize_templates()
         
         # A/B testing configuration
         self.ab_tests = {}
@@ -113,9 +119,7 @@ Format your response as JSON with the following structure:
                       'historical_data', 'cross_channel_data'],
             max_tokens=4000,
             temperature=0.3,
-            system_prompt="""You are an expert cryptocurrency trading analyst with deep knowledge of technical analysis, 
-market dynamics, and risk management. Provide accurate, data-driven analysis with clear justifications. 
-Be conservative in risk assessment and prioritize capital preservation.""",
+            system_prompt=self.deepseek_system_prompt,
             metadata={'category': 'analysis', 'priority': 'high'}
         )
         
@@ -168,7 +172,7 @@ Response format:
             variables=['signal_params', 'volatility_data', 'liquidity_data', 'correlation_data'],
             max_tokens=2000,
             temperature=0.2,
-            system_prompt="You are a risk management specialist focused on protecting capital and optimizing position sizing.",
+            system_prompt=self.deepseek_system_prompt,
             metadata={'category': 'risk', 'priority': 'high'}
         )
         
@@ -215,7 +219,7 @@ Response format:
             variables=['pair', 'price_data', 'volume_data', 'orderbook_data', 'news_sentiment'],
             max_tokens=1500,
             temperature=0.3,
-            system_prompt="You are a market analyst specializing in cryptocurrency market microstructure and sentiment analysis.",
+            system_prompt=self.deepseek_system_prompt,
             metadata={'category': 'market', 'priority': 'medium'}
         )
         
@@ -272,7 +276,7 @@ Response format:
             variables=['pair', 'timeframe', 'indicators', 'patterns', 'divergences', 'mtf_analysis'],
             max_tokens=2000,
             temperature=0.3,
-            system_prompt="You are a technical analysis expert with deep knowledge of chart patterns, indicators, and market structure.",
+            system_prompt=self.deepseek_system_prompt,
             metadata={'category': 'technical', 'priority': 'medium'}
         )
         
@@ -322,11 +326,31 @@ Response format:
             variables=['analysis_results', 'risk_results', 'confidence_score'],
             max_tokens=3000,
             temperature=0.4,
-            system_prompt="You are an expert trading educator who can explain complex concepts at multiple levels of sophistication.",
+            system_prompt=self.deepseek_system_prompt,
             metadata={'category': 'justification', 'priority': 'high'}
         )
         
         return templates
+    
+    def _load_deepseek_prompt(self) -> str:
+        """Load the DeepSeek V3.1 system prompt from file."""
+        try:
+            prompt_path = Path(__file__).parent / "prompts" / "deepseek_v3_system.md"
+            if prompt_path.exists():
+                with open(prompt_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            else:
+                logger.warning("DeepSeek prompt file not found, using default")
+                return self._get_default_deepseek_prompt()
+        except Exception as e:
+            logger.error(f"Error loading DeepSeek prompt: {e}")
+            return self._get_default_deepseek_prompt()
+    
+    def _get_default_deepseek_prompt(self) -> str:
+        """Return default DeepSeek system prompt."""
+        return """You are AENEAS-AI, an advanced cryptocurrency trading signal analysis system powered by DeepSeek V3.1. 
+Your primary function is to verify, analyze, and evaluate trading signals from Telegram channels with institutional-grade accuracy.
+Focus on risk assessment using Kelly Criterion, market manipulation detection, and providing quantitative analysis with confidence scores."""
     
     def build_prompt(self, 
                      prompt_type: str,
@@ -462,7 +486,7 @@ Response format:
             variables=variables,
             max_tokens=kwargs.get('max_tokens', 2000),
             temperature=kwargs.get('temperature', 0.3),
-            system_prompt=kwargs.get('system_prompt', ''),
+            system_prompt=kwargs.get('system_prompt', self.deepseek_system_prompt),
             metadata=kwargs.get('metadata', {})
         )
         

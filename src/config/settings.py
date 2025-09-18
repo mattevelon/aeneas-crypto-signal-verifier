@@ -47,7 +47,8 @@ class Settings(BaseSettings):
     telegram_channels: str = Field(default="", description="Comma-separated channel list")
     
     # LLM Configuration
-    llm_provider: str = Field(default="openai", description="LLM provider")
+    llm_provider: str = Field(default="openrouter", description="LLM provider")
+    openrouter_api_key: Optional[str] = Field(default=None, description="OpenRouter API key")
     llm_model: str = Field(default="gpt-4-turbo-preview", description="LLM model")
     llm_api_key: Optional[str] = Field(default=None, description="LLM API key")
     llm_temperature: float = Field(default=0.3, description="LLM temperature")

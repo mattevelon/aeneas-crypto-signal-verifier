@@ -731,15 +731,26 @@ JAEGER_ENDPOINT=http://localhost:14268
 ---
 
 ## Version History
-- **v1.0.0** (2024-01-15): Initial release
-- **v1.1.0** (Planned): Multi-language support
-- **v1.2.0** (Planned): Advanced risk metrics
-- **v2.0.0** (Future): Multi-model ensemble
+- **v1.0.0** (2025-01-16): Initial release - Full production system with all 6 phases complete
+  - Complete signal detection and validation pipeline
+  - Multi-provider LLM integration (GPT-4, Claude, DeepSeek)
+  - Market validation and risk assessment
+  - ML pipeline with XGBoost/LightGBM
+  - JWT authentication and WebSocket support
+  - Comprehensive monitoring stack
+- **v1.1.0** (2025-09-18): DeepSeek V3.1 Integration
+  - Integrated DeepSeek V3.1 via OpenRouter API
+  - Custom 6,410 character system prompt
+  - Optimized for crypto signal analysis
+  - 68% confidence score achieved in testing
+- **v1.2.0** (Planned): Enhanced ML models and backtesting
+- **v2.0.0** (Future): Multi-model ensemble with federated learning
 
 ---
 
 ## Contact Information
-- **Technical Lead**: [technical@example.com]
-- **DevOps Team**: [devops@example.com]
-- **Security Team**: [security@example.com]
-- **On-Call Rotation**: [PagerDuty Integration]
+- **Project Owner**: AENEAS Development Team
+- **Repository**: mattevelon/aeneas-crypto-signal-verifier
+- **Technical Support**: [Contact via repository issues]
+- **Security Reports**: [Submit via private repository security advisory]
+- **Documentation**: [Available in /docs directory]

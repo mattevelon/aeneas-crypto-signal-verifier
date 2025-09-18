@@ -151,8 +151,8 @@ class SecurityScanner:
                             "message": message,
                             "severity": "high"
                         })
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error scanning {file_path}: {e}")
                 
         return {"issues": issues, "files_scanned": len(list(Path("src").rglob("*.py")))}
         
@@ -196,8 +196,8 @@ class SecurityScanner:
                                     "secret_type": secret_type,
                                     "severity": "critical"
                                 })
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"        Error checking {file_path}: {e}")
                     
         return {"secrets_found": len(secrets_found), "details": secrets_found[:5]}  # Limit details for security
         
@@ -291,8 +291,8 @@ class SecurityScanner:
                             "severity": "medium"
                         })
                         
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking configuration {file_path}: {e}")
                 
         return {"issues": issues}
         
@@ -357,8 +357,8 @@ class SecurityScanner:
                         "severity": "high"
                     })
                     break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking {file_path}: {e}")
                 
         return not found_weak
         
@@ -387,8 +387,8 @@ class SecurityScanner:
                             "severity": "critical"
                         })
                         break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking {file_path}: {e}")
                 
         return not found_injection
         
@@ -419,8 +419,8 @@ class SecurityScanner:
                 if any(check in content.lower() for check in password_checks):
                     found = True
                     break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking {file_path}: {e}")
                 
         if not found:
             self.vulnerabilities.append({
@@ -449,8 +449,8 @@ class SecurityScanner:
                         "severity": "high"
                     })
                     break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking {file_path}: {e}")
                 
         return not found_unsafe
         
@@ -466,8 +466,8 @@ class SecurityScanner:
                 if any(pattern in content for pattern in logging_patterns):
                     found = True
                     break
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking {file_path}: {e}")
                 
         if not found:
             self.vulnerabilities.append({
@@ -494,8 +494,8 @@ class SecurityScanner:
                     found_url = True
                 if any(pattern in content for pattern in validation_patterns):
                     found_validation = True
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"      Error checking {file_path}: {e}")
                 
         if found_url and not found_validation:
             self.vulnerabilities.append({
